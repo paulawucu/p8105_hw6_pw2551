@@ -80,7 +80,7 @@ birth_weight_df %>%
   theme(plot.title = element_text(hjust = 0.5)) + 
   labs(y = "Residuals", x = "Fitted Values")
 ```
-<br>We can see that the red smoothed line generated from the residual points is nearly aligned with the blue horizontal dashed line with y-intercept = 0. This means our residuals values "bounce" around 0, suggesting that the assumption that the relationship between predictors and outcome is linear is reasonable. <br><br>
+<br>We can see that the red smoothed line generated from the residual points is aligned with the blue horizontal dashed line with y-intercept = 0. This means our residuals values "bounce" around 0, suggesting that the assumption that the relationship between predictors and outcome - the birthweight - is linear is reasonable. <br><br>
 
 **Compared to other two models**:<br>
 *First model*: using length at birth and gestational age as predictors (main effects only)
@@ -137,9 +137,9 @@ cv_df %>%
   ggplot(aes(x = model, y = rmse,))+
   geom_violin(aes(fill = model), alpha = 0.5)+
   scale_x_discrete(labels = c("My Model", "First Model", "Second Model"))+
-  theme(legend.position = "none") +  # the display of legends is redundant
   ggtitle("RMSE Distribution Plots") +
-  theme(plot.title = element_text(hjust = 0.5)) + 
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "none")  +  # the display of legends is redundant
   labs(y = "RMSE", x = "Models")
 ```
 <br>The second model using circumference, length, sex, and all interactions definitely is the best because it has the lowest RMSE value. The lower RMSE value, the better the fit. As for my model, although I did some literature review, I put all predictors in a non-interactive way, which could be the reason for the huge RMSE values. <br>
@@ -182,7 +182,7 @@ r_squared_ci =
   )
 knitr::kable(r_squared_ci, col.names = c("Lower Limit", "Upper Limit"))
 ```
-The 95% Confidence Interval of $\hat{r}^2$ is (`r round(pull(r_squared_ci, ci_lower)[[1]], 2)`, `r round(pull(r_squared_ci, ci_upper)[[1]], 2)`).
+The 95% Confidence Interval of $\hat{r}^2$ is (`r round(pull(r_squared_ci, ci_lower)[[1]], 3)`, `r round(pull(r_squared_ci, ci_upper)[[1]], 3)`).
 
 
 #### Log(beta_0 * beta_1)
@@ -209,7 +209,7 @@ log_beta_ci =
   )
 knitr::kable(log_beta_ci, col.names = c("Lower Limit", "Upper Limit"))
 ```
-The 95% Confidence Interval of $\log(\hat{\beta}_0 * \hat{\beta}_1)$ is (`r round(pull(log_beta_ci, ci_lower)[[1]], 2)`, `r round(pull(log_beta_ci, ci_upper)[[1]], 2)`).<br>
+The 95% Confidence Interval of $\log(\hat{\beta}_0 * \hat{\beta}_1)$ is (`r round(pull(log_beta_ci, ci_lower)[[1]], 3)`, `r round(pull(log_beta_ci, ci_upper)[[1]], 3)`).<br>
 
 
 #### Plots
@@ -223,7 +223,7 @@ r_squared_results %>%
   labs(y = "Density", x = "R-hat-squared")
 ```
 
-<br> The $\hat{r}^2$-estimate density plot looks like having a normal distribution. 
+<br> The $\hat{r}^2$-estimate density plot looks like having a normal distribution around mean roughly equals to 0.912. 
 
 ```{r}
 log_beta_results %>% 
@@ -234,7 +234,7 @@ log_beta_results %>%
   labs(y = "Density", x = "Log(beta_0 * beta_1)")
 ```
 
-<br> The $\log(\hat{\beta}_0 * \hat{\beta}_1)$-estimate density plot also looks like having a normal distribution. 
+<br> The $\log(\hat{\beta}_0 * \hat{\beta}_1)$-estimate density plot also looks like having a normal distribution around mean roughlt equals to 2.02. 
 
 
 
