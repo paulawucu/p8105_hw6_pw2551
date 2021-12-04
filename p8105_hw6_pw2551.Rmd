@@ -31,6 +31,10 @@ scale_fill_discrete = scale_fill_viridis_d
 theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
+Set the seed to ensure I can get the same results each time I ran my code
+```{r}
+set.seed(100) 
+```
 ## Problem 1
 #### Data Preprocessing
 Read in data and data cleaning
@@ -41,7 +45,7 @@ birth_weight_df = read_csv("./data/birthweight.csv") %>%
          malform = as.factor(malform),
          frace = as.factor(frace),
          mrace = as.factor(mrace))
-knitr::kable(birth_weight_df[1:7,])
+knitr::kable(birth_weight_df[1:7,])  # choose to display first 7 rows on purpose
 ```
 
 Check for missing values
@@ -55,37 +59,47 @@ As we can see from above, no missing values appeared in the data set. Thus, no i
 
 #### Regression
 **My proposed model**:<br>
-I did some research on potential factors that could affect infants' birth weights: "Low birth weight is associated with many socio-economic factors such as residence, mother's age and occupation, birth order, the family's income and many maternal conditions such as nutritional status, mother's educational and health status [1]." <br><br>
+I did some research on potential factors that could affect infants' birth weights: "Low birth weight is associated with many socio-economic factors such as residence, mother's age and occupation, birth order, the family's income and many maternal conditions such as nutritional status, mother's educational and health status [1]." <br>
 
-Thus, I proposed my model to explore the associations among: `fincome` (family income), `momage` (mother's age at delivery), `parity`(to approximate birth order), `smoken` and `ppbmi` (to approximate maternal conditions).
+Based on the information mentioned above, I proposed my model to explore the associations among (i.e. my model will include the following predictors): `fincome` (family income), `momage` (mother's age at delivery), `parity`(to approximate birth order), `smoken` and `ppbmi` (to approximate maternal conditions).
 ```{r}
 my_model_fit = lm(bwt ~ fincome + momage + parity + smoken + ppbmi, data = birth_weight_df)
-broom::tidy(my_model_fit)
+broom::tidy(my_model_fit) %>% 
+  knitr::kable()
 ```
 Plot residual plots
-```{r}
+```{r, message=FALSE}
 birth_weight_df %>% 
   modelr::add_residuals(my_model_fit) %>%
   modelr::add_predictions(my_model_fit) %>% 
   ggplot(aes(x = pred, y = resid))+
-  geom_point(aes(alpha = 0.5))+
-  geom_smooth(se = FALSE, method = lm, color = "red")
+  geom_point(alpha = 0.5)+
+  geom_smooth(se = FALSE, method = lm, color = "red")+
+  geom_hline(yintercept= 0, linetype = "dashed", col = "blue")+  # a horizontal line for reference
+  ggtitle("Model Residuals vs. Fitted Values") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  labs(y = "Residuals", x = "Fitted Values")
 ```
+<br>We can see that the red smoothed line generated from the residual points is nearly aligned with the blue horizontal dashed line with y-intercept = 0. This means our residuals values "bounce" around 0, suggesting that the assumption that the relationship between predictors and outcome is linear is reasonable. <br><br>
+
 **Compared to other two models**:<br>
-First model: using length at birth and gestational age as predictors (main effects only)
+*First model*: using length at birth and gestational age as predictors (main effects only)
 ```{r}
 f_model_fit = lm(bwt ~ blength + gaweeks, data = birth_weight_df) 
-broom::tidy(f_model_fit)
+broom::tidy(f_model_fit) %>% 
+  knitr::kable()
 ```
 
-Second model:using head circumference, length, sex, and all interactions (including the three-way interaction) between these
+*Second model*: using head circumference, length, sex, and all interactions (including the three-way interaction) between these
 ```{r}
+# the second model contains predictors of all interactions
 s_model_fit = lm(bwt ~ bhead + blength + babysex + bhead*blength 
                  + bhead*babysex + blength*babysex + bhead*blength*babysex, 
                  data = birth_weight_df)
-broom::tidy(s_model_fit)
+broom::tidy(s_model_fit) %>% 
+  knitr::kable()
 ```
-
+<br>Make comparisons in terms of the cross-validated prediction error
 ```{r}
 cv_df = 
   crossv_mc(birth_weight_df,100) %>% 
@@ -121,12 +135,14 @@ cv_df %>%
   ) %>% 
   mutate(model = fct_relevel(model, "my", "f_model", "s_model")) %>% 
   ggplot(aes(x = model, y = rmse,))+
-  geom_boxplot(aes(fill = model, alpha = 0.3))+
-  theme(legend.position = "none")
+  geom_violin(aes(fill = model), alpha = 0.5)+
+  scale_x_discrete(labels = c("My Model", "First Model", "Second Model"))+
+  theme(legend.position = "none") +  # the display of legends is redundant
+  ggtitle("RMSE Distribution Plots") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  labs(y = "RMSE", x = "Models")
 ```
-
-
-
+<br>The second model using circumference, length, sex, and all interactions definitely is the best because it has the lowest RMSE value. The lower RMSE value, the better the fit. As for my model, although I did some literature review, I put all predictors in a non-interactive way, which could be the reason for the huge RMSE values. <br>
 
 
 ## Problem 2
@@ -144,10 +160,6 @@ weather_df =
     tmax = tmax / 10) %>%
   select(name, id, everything())
 ```
-Set the seed to ensure I can get the same results each time I ran my code
-```{r}
-set.seed(1) 
-```
 
 ### R-squared
 ```{r}
@@ -160,14 +172,20 @@ r_squared_results =
   ) %>% 
   select(-models, -strap) %>% 
   unnest(results) %>% 
-  janitor::clean_names()  # the variable names are not that cleaned
-r_squared_results %>% 
+  janitor::clean_names()  # the variable names are not in snake-form
+
+r_squared_ci = 
+  r_squared_results %>% 
   summarize(
     ci_lower = quantile(r_squared, 0.025),
     ci_upper = quantile(r_squared, 0.975)
   )
+knitr::kable(r_squared_ci, col.names = c("Lower Limit", "Upper Limit"))
 ```
-#### log(beta_0 * beta_1)
+The 95% Confidence Interval of $\hat{r}^2$ is (`r round(pull(r_squared_ci, ci_lower)[[1]], 2)`, `r round(pull(r_squared_ci, ci_upper)[[1]], 2)`).
+
+
+#### Log(beta_0 * beta_1)
 ```{r}
 log_beta_results = 
   weather_df %>% 
@@ -183,27 +201,42 @@ log_beta_results =
   janitor::clean_names() %>% 
   mutate(log_beta_zo = log(intercept*tmin))
 
-log_beta_results %>% 
+log_beta_ci = 
+  log_beta_results %>% 
   summarize(
     ci_lower = quantile(log_beta_zo, 0.025),
     ci_upper = quantile(log_beta_zo, 0.975)
   )
+knitr::kable(log_beta_ci, col.names = c("Lower Limit", "Upper Limit"))
 ```
+The 95% Confidence Interval of $\log(\hat{\beta}_0 * \hat{\beta}_1)$ is (`r round(pull(log_beta_ci, ci_lower)[[1]], 2)`, `r round(pull(log_beta_ci, ci_upper)[[1]], 2)`).<br>
+
+
 #### Plots
 ```{r}
 # r squared
 r_squared_results %>% 
   ggplot(aes(x = r_squared))+  # plot the estimate
-  geom_density()
+  geom_density()+
+  ggtitle("Distribution of R-hat-squared Estimates") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  labs(y = "Density", x = "R-hat-squared")
 ```
+
+<br> The $\hat{r}^2$-estimate density plot looks like having a normal distribution. 
+
 ```{r}
 log_beta_results %>% 
   ggplot(aes(x = log_beta_zo))+  # plot the estimate
-  geom_density() 
+  geom_density() +
+  ggtitle("Distribution of Log(beta_0 * beta_1) Estimates") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  labs(y = "Density", x = "Log(beta_0 * beta_1)")
 ```
 
+<br> The $\log(\hat{\beta}_0 * \hat{\beta}_1)$-estimate density plot also looks like having a normal distribution. 
 
 
 
 ## Reference
-[1] Maternal Associated Factors of Low Birth Weight
+[1] Gebremedhin, Meresa, et al. "Maternal associated factors of low birth weight: a hospital based cross-sectional mixed study in Tigray, Northern Ethiopia." BMC pregnancy and childbirth 15.1 (2015): 1-8.
